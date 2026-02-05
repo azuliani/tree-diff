@@ -1,3 +1,4 @@
+// Basic demo: compute a delta with diff(), apply it, and assert the patched object equals rhs.
 import assert from "node:assert/strict";
 
 import { apply, diff } from "../src/index.ts";
@@ -24,4 +25,3 @@ apply(target, delta);
 
 assert.deepEqual(target, rhs);
 console.log("patched ok");
-

@@ -20,12 +20,12 @@
     "build:cjs": "tsc -p tsconfig.build.cjs.json && node ./scripts/write-cjs-package-json.mjs",
     "build:esm": "tsc -p tsconfig.build.esm.json",
     "build:types": "tsc -p tsconfig.build.types.json",
-    "bench": "node --experimental-strip-types ./bench/run.ts",
-    "bench:gc": "node --expose-gc --experimental-strip-types ./bench/run.ts",
+    "bench": "node ./bench/run.ts",
+    "bench:gc": "node --expose-gc ./bench/run.ts",
     "clean": "rm -rf dist",
-    "profile:cpu": "mkdir -p .profiles && node --expose-gc --cpu-prof --cpu-prof-dir .profiles --experimental-strip-types ./bench/profile.ts",
+    "profile:cpu": "mkdir -p .profiles && node --expose-gc --cpu-prof --cpu-prof-dir .profiles ./bench/profile.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --experimental-strip-types --test ./test/tree-diff.test.ts",
+    "test": "node --test ./test/tree-diff.test.ts",
     "test:dist": "npm run build && node --test ./test/dist-exports.test.cjs"
   },
   "devDependencies": {
