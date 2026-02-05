@@ -1,0 +1,97 @@
+import type { Key, Meta, RelPath } from "./types.ts";
+import { TreeDiffError } from "./errors.ts";
+import { assertFiniteNumber, isPlainObject } from "./utils.ts";
+
+type Encoded = {
+  value: unknown;
+  d: RelPath[];
+  u: RelPath[];
+};
+
+function prefixPaths(prefix: Key, paths: RelPath[]): RelPath[] {
+  if (paths.length === 0) return [];
+  return paths.map((p) => (p.length === 0 ? [prefix] : [prefix, ...p]));
+}
+
+function encodeInner(value: unknown, stack: WeakSet<object>): Encoded {
+  if (value === undefined) {
+    return { value: null, d: [], u: [[]] };
+  }
+
+  if (value === null) {
+    return { value: null, d: [], u: [] };
+  }
+
+  if (typeof value === "string" || typeof value === "boolean") {
+    return { value, d: [], u: [] };
+  }
+
+  if (typeof value === "number") {
+    assertFiniteNumber(value);
+    return { value, d: [], u: [] };
+  }
+
+  const t = typeof value;
+  if (t === "bigint" || t === "symbol" || t === "function") {
+    throw new TreeDiffError("UNSUPPORTED_TYPE", `Unsupported type: ${t}`);
+  }
+
+  if (value instanceof Date) {
+    return { value: value.toISOString(), d: [[]], u: [] };
+  }
+
+  if (Array.isArray(value)) {
+    if (stack.has(value)) throw new TreeDiffError("CYCLE_DETECTED");
+    stack.add(value);
+    try {
+      const out: unknown[] = new Array(value.length);
+      const d: RelPath[] = [];
+      const u: RelPath[] = [];
+      for (let i = 0; i < value.length; i++) {
+        const child = encodeInner(value[i], stack);
+        out[i] = child.value;
+        d.push(...prefixPaths(i, child.d));
+        u.push(...prefixPaths(i, child.u));
+      }
+      return { value: out, d, u };
+    } finally {
+      stack.delete(value);
+    }
+  }
+
+  if (isPlainObject(value)) {
+    if (stack.has(value)) throw new TreeDiffError("CYCLE_DETECTED");
+    stack.add(value);
+    try {
+      const out: Record<string, unknown> = {};
+      const d: RelPath[] = [];
+      const u: RelPath[] = [];
+      for (const k of Object.keys(value)) {
+        const child = encodeInner(value[k], stack);
+        out[k] = child.value;
+        d.push(...prefixPaths(k, child.d));
+        u.push(...prefixPaths(k, child.u));
+      }
+      return { value: out, d, u };
+    } finally {
+      stack.delete(value);
+    }
+  }
+
+  throw new TreeDiffError("UNSUPPORTED_TYPE", "Unsupported object type");
+}
+
+function buildMeta(d: RelPath[], u: RelPath[]): Meta | undefined {
+  if (d.length === 0 && u.length === 0) return undefined;
+  const meta: Meta = {};
+  if (d.length > 0) meta.d = d;
+  if (u.length > 0) meta.u = u;
+  return meta;
+}
+
+export function encode(value: unknown): { value: unknown; meta?: Meta } {
+  const stack = new WeakSet<object>();
+  const encoded = encodeInner(value, stack);
+  const meta = buildMeta(encoded.d, encoded.u);
+  return meta ? { value: encoded.value, meta } : { value: encoded.value };
+}

@@ -1,0 +1,38 @@
+{
+  "name": "tree-diff",
+  "version": "0.1.0",
+  "description": "Tree/trie-based JSON-friendly diff and strict patcher.",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs",
+    "build:cjs": "tsc -p tsconfig.build.cjs.json && node ./scripts/write-cjs-package-json.mjs",
+    "build:esm": "tsc -p tsconfig.build.esm.json",
+    "build:types": "tsc -p tsconfig.build.types.json",
+    "bench": "node --experimental-strip-types ./bench/run.ts",
+    "bench:gc": "node --expose-gc --experimental-strip-types ./bench/run.ts",
+    "clean": "rm -rf dist",
+    "profile:cpu": "mkdir -p .profiles && node --expose-gc --cpu-prof --cpu-prof-dir .profiles --experimental-strip-types ./bench/profile.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test ./test/tree-diff.test.ts",
+    "test:dist": "npm run build && node --test ./test/dist-exports.test.cjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=23.6.0"
+  }
+}
