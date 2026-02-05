@@ -1,6 +1,6 @@
 {
   "name": "@azuliani/tree-diff",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Tree/trie-based JSON-friendly diff and strict patcher.",
   "license": "MIT",
   "repository": {
