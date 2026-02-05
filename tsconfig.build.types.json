@@ -5,8 +5,9 @@
     "rootDir": "src",
     "declaration": true,
     "declarationMap": true,
+    "sourceMap": true,
+    "inlineSources": true,
     "emitDeclarationOnly": true
   },
   "include": ["src/**/*.ts"]
 }
-

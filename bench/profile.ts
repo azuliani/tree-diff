@@ -1,5 +1,4 @@
 import { spawnSync } from "node:child_process";
-import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -53,12 +52,21 @@ async function loadTreeDiff(): Promise<{
   return (await import(url)) as any;
 }
 
-async function loadDeepDiff(deepDiffDir: string): Promise<{
+async function loadDeepDiff(): Promise<{
   diff: (a: unknown, b: unknown) => unknown;
   applyDiff: (t: any, d: any) => void;
 }> {
-  const url = pathToFileURL(path.join(deepDiffDir, "dist", "esm", "index.js")).href;
-  return (await import(url)) as any;
+  const deepNs = (await import("@azuliani/deep-diff")) as any;
+  const deepMod = typeof deepNs?.diff === "function"
+    ? deepNs
+    : (deepNs && typeof deepNs === "object" && "default" in deepNs) ? deepNs.default : deepNs;
+  const diff = deepMod?.diff;
+  const applyDiff = deepMod?.applyDiff ?? deepMod?.apply;
+  if (typeof diff !== "function") throw new Error("@azuliani/deep-diff: expected export `diff()`");
+  if (typeof applyDiff !== "function") {
+    throw new Error("@azuliani/deep-diff: expected export `applyDiff()` (or `apply()`)"); 
+  }
+  return { diff, applyDiff };
 }
 
 function warmup(fn: () => void, warmupIterations: number): void {
@@ -68,11 +76,6 @@ function warmup(fn: () => void, warmupIterations: number): void {
 function loop(fn: () => void, iterations: number): void {
   for (let i = 0; i < iterations; i++) fn();
 }
-
-const deepDiffDir =
-  parseArgValue("--deep-diff-dir") ??
-  process.env.DEEP_DIFF_DIR ??
-  path.join(os.homedir(), "Work", "deep-diff");
 
 const iterations = Number(parseArgValue("--iterations") ?? process.env.PROFILE_ITERATIONS ?? "1000000");
 const warmupIterations = Number(parseArgValue("--warmup") ?? process.env.PROFILE_WARMUP ?? "10000");
@@ -103,18 +106,17 @@ if (op !== "diff" && op !== "apply" && op !== "both") {
 console.log(`Node: ${process.version}`);
 console.log(`Iterations: ${iterations}  Warmup: ${warmupIterations}  Wire: ${wire ? "yes" : "no"}  GC: ${globalThis.gc ? "enabled" : "disabled"}`);
 console.log(`Lib: ${lib}  Op: ${op}  Fixture filter: ${only ? JSON.stringify(only) : "(all)"}`);
-console.log(`deep-diff dir: ${deepDiffDir}`);
+console.log("deep-diff: @azuliani/deep-diff (devDependency)");
 
 if (!noBuild) {
   // tree-diff uses src for profiling, but build anyway for parity with bench/run.ts usage.
   run("npm", ["run", "build"], process.cwd());
-  run("npm", ["run", "build"], deepDiffDir);
 }
 
 const fixtures = pickFixture(only);
 
 const tree = lib === "deep" ? null : await loadTreeDiff();
-const deep = lib === "tree" ? null : await loadDeepDiff(deepDiffDir);
+const deep = lib === "tree" ? null : await loadDeepDiff();
 
 for (const f of fixtures) {
   console.log(`\n=== ${f.name} ===`);
@@ -181,4 +183,3 @@ for (const f of fixtures) {
     }, iterations);
   }
 }
-

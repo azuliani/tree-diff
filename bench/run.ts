@@ -196,11 +196,6 @@ function benchForFixture(
   for (const r of results) console.log(formatResult(r));
 }
 
-const deepDiffDir =
-  parseArgValue("--deep-diff-dir") ??
-  process.env.DEEP_DIFF_DIR ??
-  path.join(os.homedir(), "Work", "deep-diff");
-
 const iterations = Number(parseArgValue("--iterations") ?? process.env.BENCH_ITERATIONS ?? "1000");
 const warmup = Number(parseArgValue("--warmup") ?? process.env.BENCH_WARMUP ?? "200");
 
@@ -219,31 +214,39 @@ const only = parseArgValue("--only");
 
 console.log(`Node: ${process.version}`);
 console.log(`Iterations: ${iterations}  Warmup: ${warmup}  Wire: ${wire ? "yes" : "no"}  GC: ${globalThis.gc ? "enabled" : "disabled"}`);
-console.log(`deep-diff dir: ${deepDiffDir}`);
+console.log("deep-diff: @azuliani/deep-diff (devDependency)");
 
 if (!noBuild) {
   run("npm", ["run", "build"], process.cwd());
-  run("npm", ["run", "build"], deepDiffDir);
 }
 
 const treeUrl = pathToFileURL(path.join(process.cwd(), "dist", "esm", "index.js")).href;
-const deepUrl = pathToFileURL(path.join(deepDiffDir, "dist", "esm", "index.js")).href;
 
 const treeMod = (await import(treeUrl)) as unknown as {
   diff: (a: unknown, b: unknown) => unknown;
   apply: (t: any, d: any) => void;
 };
-const deepMod = (await import(deepUrl)) as unknown as {
-  diff: (a: unknown, b: unknown) => unknown;
-  applyDiff: (t: any, d: any) => void;
-};
+
+const deepNs = (await import("@azuliani/deep-diff")) as any;
+const deepMod = typeof deepNs?.diff === "function"
+  ? deepNs
+  : (deepNs && typeof deepNs === "object" && "default" in deepNs) ? deepNs.default : deepNs;
+const deepDiff = deepMod?.diff;
+const deepApplyDiff = deepMod?.applyDiff ?? deepMod?.apply;
+
+if (typeof deepDiff !== "function") {
+  throw new Error("@azuliani/deep-diff: expected export `diff()`");
+}
+if (typeof deepApplyDiff !== "function") {
+  throw new Error("@azuliani/deep-diff: expected export `applyDiff()` (or `apply()`)"); 
+}
 
 const fixtures = makeFixtures();
 for (const f of fixtures) {
   if (only && !f.name.includes(only)) continue;
   benchForFixture(
     f,
-    { tree: treeMod, deep: deepMod },
+    { tree: treeMod, deep: { diff: deepDiff, applyDiff: deepApplyDiff } },
     { iterations, warmup, wire }
   );
 }

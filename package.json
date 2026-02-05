@@ -2,6 +2,14 @@
   "name": "@azuliani/tree-diff",
   "version": "0.1.0",
   "description": "Tree/trie-based JSON-friendly diff and strict patcher.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azuliani/tree-diff.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/cjs/index.js",
   "types": "./dist/types/index.d.ts",
@@ -13,7 +21,9 @@
     }
   },
   "files": [
-    "dist"
+    "CHANGELOG.md",
+    "dist",
+    "src"
   ],
   "scripts": {
     "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs",
@@ -23,12 +33,16 @@
     "bench": "node ./bench/run.ts",
     "bench:gc": "node --expose-gc ./bench/run.ts",
     "clean": "rm -rf dist",
+    "prepare": "npm run build",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm test && npm run typecheck && npm run test:dist",
     "profile:cpu": "mkdir -p .profiles && node --expose-gc --cpu-prof --cpu-prof-dir .profiles ./bench/profile.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test ./test/tree-diff.test.ts",
     "test:dist": "npm run build && node --test ./test/dist-exports.test.cjs"
   },
   "devDependencies": {
+    "@azuliani/deep-diff": "^1.0.2",
     "@types/node": "^22.13.4",
     "typescript": "^5.7.3"
   },
