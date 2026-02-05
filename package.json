@@ -33,7 +33,7 @@
     "bench": "node ./bench/run.ts",
     "bench:gc": "node --expose-gc ./bench/run.ts",
     "clean": "rm -rf dist",
-    "prepare": "node ./scripts/prepare.mjs",
+    "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run typecheck && npm run test:dist",
     "profile:cpu": "mkdir -p .profiles && node --expose-gc --cpu-prof --cpu-prof-dir .profiles ./bench/profile.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
