@@ -10,6 +10,12 @@ test("diff() throws INVALID_ROOT for non-container roots", () => {
   );
 });
 
+test("diff() returns [] for deep-equal objects", () => {
+  const lhs = { a: { b: [1, { c: "x" }] } };
+  const rhs = { a: { b: [1, { c: "x" }] } };
+  assert.deepEqual(diff(lhs, rhs), []);
+});
+
 test("object example: edit + delete", () => {
   const lhs = { name: "Alice", active: true };
   const rhs = { name: "Bob" };

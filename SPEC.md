@@ -289,7 +289,7 @@ Strict apply enforces this via index preconditions (see §7.4).
 Signature (conceptual):
 
 ```ts
-function diff(lhs: unknown, rhs: unknown): TreeDelta | undefined;
+function diff(lhs: unknown, rhs: unknown): TreeDelta;
 ```
 
 ### 6.1 General comparison rules

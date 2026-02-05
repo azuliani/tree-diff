@@ -210,7 +210,7 @@ function diffArray(
   }
 }
 
-export function diff(lhs: unknown, rhs: unknown): TreeDelta | undefined {
+export function diff(lhs: unknown, rhs: unknown): TreeDelta {
   if (!sameContainerKind(lhs, rhs)) throw new TreeDiffError("INVALID_ROOT");
 
   const lhsStack = new WeakSet<object>();
@@ -220,5 +220,5 @@ export function diff(lhs: unknown, rhs: unknown): TreeDelta | undefined {
     ? diffArray(lhs, rhs as unknown[], lhsStack, rhsStack)
     : diffObject(lhs as Record<string, unknown>, rhs as Record<string, unknown>, lhsStack, rhsStack);
 
-  return entries.length === 0 ? undefined : entries;
+  return entries;
 }

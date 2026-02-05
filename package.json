@@ -1,5 +1,5 @@
 {
-  "name": "tree-diff",
+  "name": "@azuliani/tree-diff",
   "version": "0.1.0",
   "description": "Tree/trie-based JSON-friendly diff and strict patcher.",
   "type": "module",
