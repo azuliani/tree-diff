@@ -19,47 +19,57 @@ function wrapNode(head: Key, entries: Entry[]): Entry {
   return [[head], entries];
 }
 
-function assertSupportedValue(value: unknown): void {
-  if (value === null) return;
+const KIND_SCALAR = 0;
+const KIND_DATE = 1;
+const KIND_ARRAY = 2;
+const KIND_OBJECT = 3;
+
+function kindOf(value: unknown): 0 | 1 | 2 | 3 {
+  if (value === null) return KIND_SCALAR;
 
   const t = typeof value;
   switch (t) {
     case "string":
     case "boolean":
     case "undefined":
-      return;
+      return KIND_SCALAR;
     case "number":
       if (!Number.isFinite(value)) throw new TreeDiffError("UNSUPPORTED_TYPE", "Non-finite number");
-      return;
-    case "bigint":
-    case "symbol":
-    case "function":
-      throw new TreeDiffError("UNSUPPORTED_TYPE", `Unsupported type: ${t}`);
+      return KIND_SCALAR;
     case "object":
-      if (value instanceof Date) return;
-      if (Array.isArray(value)) return;
-      if (isPlainObject(value)) return;
+      if (value instanceof Date) return KIND_DATE;
+      if (Array.isArray(value)) return KIND_ARRAY;
+      if (isPlainObject(value)) return KIND_OBJECT;
       throw new TreeDiffError("UNSUPPORTED_TYPE", "Unsupported object type");
     default:
       throw new TreeDiffError("UNSUPPORTED_TYPE", `Unsupported type: ${t}`);
   }
 }
 
-function validateSubtree(value: unknown, stack: WeakSet<object>): void {
-  assertSupportedValue(value);
-  if (!value || typeof value !== "object") return;
-  if (!(Array.isArray(value) || isPlainObject(value))) return;
-
+function validateContainerSubtree(
+  value: unknown[] | Record<string, unknown>,
+  kind: 2 | 3,
+  stack: WeakSet<object>
+): void {
   if (stack.has(value)) throw new TreeDiffError("CYCLE_DETECTED");
   stack.add(value);
   try {
-    if (Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) validateSubtree(value[i], stack);
+    if (kind === KIND_ARRAY) {
+      const arr = value as unknown[];
+      for (let i = 0; i < arr.length; i++) validateSubtree(arr[i], stack);
       return;
     }
-    for (const k of Object.keys(value)) validateSubtree(value[k], stack);
+    const obj = value as Record<string, unknown>;
+    for (const k of Object.keys(obj)) validateSubtree(obj[k], stack);
   } finally {
     stack.delete(value);
+  }
+}
+
+function validateSubtree(value: unknown, stack: WeakSet<object>): void {
+  const kind = kindOf(value);
+  if (kind === KIND_ARRAY || kind === KIND_OBJECT) {
+    validateContainerSubtree(value as unknown[] | Record<string, unknown>, kind, stack);
   }
 }
 
@@ -88,25 +98,27 @@ function diffObject(
 
     for (const k of Object.keys(lhs)) {
       const l = lhs[k];
-      assertSupportedValue(l);
+      const lk = kindOf(l);
 
       if (!Object.prototype.hasOwnProperty.call(rhs, k)) {
-        validateSubtree(l, lhsStack);
+        if (lk === KIND_ARRAY || lk === KIND_OBJECT) {
+          validateContainerSubtree(l as unknown[] | Record<string, unknown>, lk, lhsStack);
+        }
         out.push([k, "D"]);
         continue;
       }
 
       const r = rhs[k];
-      assertSupportedValue(r);
+      const rk = kindOf(r);
 
-      if (Array.isArray(l) && Array.isArray(r)) {
-        const child = diffArray(l, r, lhsStack, rhsStack);
+      if (lk === KIND_ARRAY && rk === KIND_ARRAY) {
+        const child = diffArray(l as unknown[], r as unknown[], lhsStack, rhsStack);
         if (child.length > 0) out.push(wrapNode(k, child));
         continue;
       }
 
-      if (isPlainObject(l) && isPlainObject(r)) {
-        const child = diffObject(l, r, lhsStack, rhsStack);
+      if (lk === KIND_OBJECT && rk === KIND_OBJECT) {
+        const child = diffObject(l as Record<string, unknown>, r as Record<string, unknown>, lhsStack, rhsStack);
         if (child.length > 0) out.push(wrapNode(k, child));
         continue;
       }
@@ -114,7 +126,9 @@ function diffObject(
       if (valuesEqual(l, r)) continue;
 
       // If lhs is a container and we aren't recursing, we must still validate it fully.
-      validateSubtree(l, lhsStack);
+      if (lk === KIND_ARRAY || lk === KIND_OBJECT) {
+        validateContainerSubtree(l as unknown[] | Record<string, unknown>, lk, lhsStack);
+      }
       const encoded = encode(r);
       out.push(leaf(k, "E", encoded.value, encoded.meta));
     }
@@ -150,31 +164,36 @@ function diffArray(
     for (let i = 0; i < minLen; i++) {
       const l = lhs[i];
       const r = rhs[i];
-      assertSupportedValue(l);
-      assertSupportedValue(r);
+      const lk = kindOf(l);
+      const rk = kindOf(r);
 
-      if (Array.isArray(l) && Array.isArray(r)) {
-        const child = diffArray(l, r, lhsStack, rhsStack);
+      if (lk === KIND_ARRAY && rk === KIND_ARRAY) {
+        const child = diffArray(l as unknown[], r as unknown[], lhsStack, rhsStack);
         if (child.length > 0) out.push(wrapNode(i, child));
         continue;
       }
 
-      if (isPlainObject(l) && isPlainObject(r)) {
-        const child = diffObject(l, r, lhsStack, rhsStack);
+      if (lk === KIND_OBJECT && rk === KIND_OBJECT) {
+        const child = diffObject(l as Record<string, unknown>, r as Record<string, unknown>, lhsStack, rhsStack);
         if (child.length > 0) out.push(wrapNode(i, child));
         continue;
       }
 
       if (valuesEqual(l, r)) continue;
 
-      validateSubtree(l, lhsStack);
+      if (lk === KIND_ARRAY || lk === KIND_OBJECT) {
+        validateContainerSubtree(l as unknown[] | Record<string, unknown>, lk, lhsStack);
+      }
       const encoded = encode(r);
       out.push(leaf(i, "E", encoded.value, encoded.meta));
     }
 
     if (lhs.length > rhs.length) {
       for (let i = rhs.length; i < lhs.length; i++) {
-        validateSubtree(lhs[i], lhsStack);
+        const lk = kindOf(lhs[i]);
+        if (lk === KIND_ARRAY || lk === KIND_OBJECT) {
+          validateContainerSubtree(lhs[i] as unknown[] | Record<string, unknown>, lk, lhsStack);
+        }
         out.push([i, "D"]);
       }
     } else if (rhs.length > lhs.length) {

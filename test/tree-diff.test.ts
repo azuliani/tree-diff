@@ -104,6 +104,33 @@ test("nested meta restoration inside leaf payload", () => {
   assert.equal(target.x.y, undefined);
 });
 
+test("apply() reuses rhs reference when meta is undefined", () => {
+  const lhs: any = { x: 0 };
+  const rhs: any = { x: { a: 1, b: [1, 2] } };
+  const delta: any = diff(lhs, rhs);
+  assert.equal(Array.isArray(delta), true);
+
+  const target: any = { x: 0 };
+  apply(target, delta);
+
+  assert.equal(target.x, delta[0][2]);
+  assert.deepEqual(target, rhs);
+});
+
+test("apply() does not mutate delta rhs when meta is present", () => {
+  const lhs: any = { x: 1 };
+  const rhs: any = { x: { createdAt: new Date("2026-02-05T00:00:00.000Z"), y: undefined } };
+  const delta: any = diff(lhs, rhs);
+  const encodedRhs = delta[0][2];
+
+  const target: any = { x: 1 };
+  apply(target, delta);
+
+  assert.equal(typeof encodedRhs.createdAt, "string");
+  assert.equal(encodedRhs.createdAt, "2026-02-05T00:00:00.000Z");
+  assert.equal(encodedRhs.y, null);
+});
+
 test("unsupported types throw even when values are equal", () => {
   assert.throws(
     () => diff({ x: Infinity }, { x: Infinity }),
@@ -144,4 +171,3 @@ test("apply() validates meta.u encoding", () => {
     (e) => e instanceof TreeDiffError && e.code === "INVALID_META"
   );
 });
-

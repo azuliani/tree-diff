@@ -48,12 +48,3 @@ export function assertKey(key: unknown): asserts key is string | number {
   if (typeof key === "number" && Number.isInteger(key) && key >= 0) return;
   throw new TreeDiffError("UNSUPPORTED_TYPE", "Invalid key type");
 }
-
-export function deepCloneJson(value: unknown): unknown {
-  if (value === null) return null;
-  if (typeof value !== "object") return value;
-  const sc = (globalThis as unknown as { structuredClone?: (v: unknown) => unknown })
-    .structuredClone;
-  if (typeof sc === "function") return sc(value);
-  return JSON.parse(JSON.stringify(value)) as unknown;
-}
