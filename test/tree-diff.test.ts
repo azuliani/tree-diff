@@ -177,3 +177,161 @@ test("apply() validates meta.u encoding", () => {
     (e) => e instanceof TreeDiffError && e.code === "INVALID_META"
   );
 });
+
+// --- Additional coverage tests ---
+
+test("diff() throws INVALID_ROOT for cross-kind containers", () => {
+  assert.throws(
+    () => diff([], {}),
+    (e) => e instanceof TreeDiffError && e.code === "INVALID_ROOT"
+  );
+  assert.throws(
+    () => diff({}, []),
+    (e) => e instanceof TreeDiffError && e.code === "INVALID_ROOT"
+  );
+});
+
+test("diff() returns [] for identical empty containers", () => {
+  assert.deepEqual(diff({}, {}), []);
+  assert.deepEqual(diff([], []), []);
+});
+
+test("apply() is a no-op for undefined or empty delta", () => {
+  const obj = { a: 1 };
+  apply(obj, undefined);
+  assert.deepEqual(obj, { a: 1 });
+
+  apply(obj, []);
+  assert.deepEqual(obj, { a: 1 });
+});
+
+test("array-of-objects diff/apply", () => {
+  const lhs = [{ id: 1, v: "a" }];
+  const rhs = [{ id: 1, v: "b" }];
+  const delta = diff(lhs, rhs);
+  const target = [{ id: 1, v: "a" }];
+  apply(target, delta);
+  assert.deepEqual(target, rhs);
+});
+
+test("array-of-arrays diff/apply", () => {
+  const lhs = [[1, 2], [3]];
+  const rhs = [[1, 3], [3]];
+  const delta = diff(lhs, rhs);
+  const target: unknown[][] = [[1, 2], [3]];
+  apply(target, delta);
+  assert.deepEqual(target, rhs);
+});
+
+test("multiple tail pushes", () => {
+  const lhs = [1];
+  const rhs = [1, 2, 3, 4];
+  const delta = diff(lhs, rhs);
+  const target = [1];
+  apply(target, delta);
+  assert.deepEqual(target, rhs);
+});
+
+test("multiple tail pops", () => {
+  const lhs = [1, 2, 3, 4];
+  const rhs = [1];
+  const delta = diff(lhs, rhs);
+  const target = [1, 2, 3, 4];
+  apply(target, delta);
+  assert.deepEqual(target, rhs);
+});
+
+test("array edit + push combined", () => {
+  const lhs = [10, 20];
+  const rhs = [11, 21, 30, 40];
+  const delta = diff(lhs, rhs);
+  const target = [10, 20];
+  apply(target, delta);
+  assert.deepEqual(target, rhs);
+});
+
+test("node traversal through array index during apply", () => {
+  const lhs = [{ key: "old" }];
+  const rhs = [{ key: "new" }];
+  const delta = diff(lhs, rhs);
+  const target = [{ key: "old" }];
+  apply(target, delta);
+  assert.deepEqual(target, rhs);
+});
+
+test("JSON round-trip: apply with serialized delta", () => {
+  const lhs = { a: new Date("2026-01-01T00:00:00.000Z"), b: undefined, c: [1, 2] };
+  const rhs = { a: new Date("2026-06-01T00:00:00.000Z"), b: undefined, c: [1, 3] };
+  const delta = diff(lhs, rhs);
+  const roundTripped = JSON.parse(JSON.stringify(delta));
+  const target: any = { a: new Date("2026-01-01T00:00:00.000Z"), b: undefined, c: [1, 2] };
+  apply(target, roundTripped);
+  assert.deepEqual(target.a, new Date("2026-06-01T00:00:00.000Z"));
+  assert.deepEqual(target.c, [1, 3]);
+});
+
+test("date values inside arrays", () => {
+  const d1 = new Date("2026-01-01T00:00:00.000Z");
+  const d2 = new Date("2026-06-01T00:00:00.000Z");
+  const lhs = [d1];
+  const rhs = [d2];
+  const delta = diff(lhs, rhs);
+  const target: any[] = [new Date("2026-01-01T00:00:00.000Z")];
+  apply(target, delta);
+  assert.equal(target[0] instanceof Date, true);
+  assert.equal(target[0].toISOString(), "2026-06-01T00:00:00.000Z");
+});
+
+test("undefined values inside arrays", () => {
+  const lhs = [1];
+  const rhs = [undefined];
+  const delta = diff(lhs, rhs);
+  assert.deepEqual(delta, [[0, "E", null, { u: [[]] }]]);
+  const target: any[] = [1];
+  apply(target, delta);
+  assert.equal(target[0], undefined);
+});
+
+test("null-prototype objects", () => {
+  const lhs = Object.create(null);
+  lhs.a = 1;
+  const rhs = Object.create(null);
+  rhs.a = 2;
+  const delta = diff(lhs, rhs);
+  apply(lhs, delta);
+  assert.equal(lhs.a, 2);
+});
+
+test("DAG shared references (non-cyclic)", () => {
+  const shared = { x: 1 };
+  const lhs = { a: shared, b: shared };
+  const rhs = { a: { x: 2 }, b: { x: 2 } };
+  const delta = diff(lhs, rhs);
+  const target: any = { a: { x: 1 }, b: { x: 1 } };
+  apply(target, delta);
+  assert.deepEqual(target, rhs);
+});
+
+test("TYPE_MISMATCH: apply delta to structurally wrong target", () => {
+  const delta = diff({ a: { b: 1 } }, { a: { b: 2 } });
+  assert.throws(
+    () => apply({ a: "not-an-object" } as any, delta),
+    (e) => e instanceof TreeDiffError && e.code === "TYPE_MISMATCH"
+  );
+});
+
+test("INVALID_DATE: meta.d pointing to non-date-string", () => {
+  assert.throws(
+    () => apply({ a: 0 }, [["a", "E", 123, { d: [[]] }]]),
+    (e) => e instanceof TreeDiffError && e.code === "INVALID_DATE"
+  );
+});
+
+test("direct array root diff/apply", () => {
+  const lhs = [1, 2];
+  const rhs = [1, 3];
+  const delta = diff(lhs, rhs);
+  const target = [1, 2];
+  apply(target, delta);
+  assert.deepEqual(target, [1, 3]);
+});

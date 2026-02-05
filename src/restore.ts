@@ -58,21 +58,21 @@ function setAtPathCopy(
   root: unknown,
   path: RelPath,
   newValue: unknown,
-  owned: WeakSet<object>
+  owned: WeakSet<object>,
+  offset: number
 ): unknown {
-  if (path.length === 0) return newValue;
+  if (offset >= path.length) return newValue;
 
-  const head = path[0] as Key;
-  const rest = path.slice(1);
+  const head = path[offset] as Key;
 
   if (Array.isArray(root)) {
     if (!isArrayIndexKey(head)) throw new TreeDiffError("INVALID_META", "Expected array index");
-    if (head < 0 || head >= root.length) throw new TreeDiffError("INVALID_META", "Index out of bounds");
+    if (head >= root.length) throw new TreeDiffError("INVALID_META", "Index out of bounds");
 
     const prevChild = root[head];
-    const nextChild = rest.length === 0
+    const nextChild = offset + 1 >= path.length
       ? newValue
-      : setAtPathCopy(prevChild, rest, newValue, owned);
+      : setAtPathCopy(prevChild, path, newValue, owned, offset + 1);
 
     if (nextChild === prevChild) return root;
 
@@ -94,9 +94,9 @@ function setAtPathCopy(
     }
 
     const prevChild = root[head];
-    const nextChild = rest.length === 0
+    const nextChild = offset + 1 >= path.length
       ? newValue
-      : setAtPathCopy(prevChild, rest, newValue, owned);
+      : setAtPathCopy(prevChild, path, newValue, owned, offset + 1);
 
     if (nextChild === prevChild) return root;
 
@@ -122,7 +122,7 @@ function getAtPath(root: unknown, path: RelPath): unknown {
   for (const seg of path) {
     if (Array.isArray(cur)) {
       if (!isArrayIndexKey(seg)) throw new TreeDiffError("INVALID_META", "Expected array index");
-      if (seg < 0 || seg >= cur.length) throw new TreeDiffError("INVALID_META", "Index out of bounds");
+      if (seg >= cur.length) throw new TreeDiffError("INVALID_META", "Index out of bounds");
       cur = cur[seg];
       continue;
     }
@@ -146,7 +146,7 @@ function restoreDates(root: unknown, paths: RelPath[], owned: WeakSet<object>): 
     if (typeof v !== "string") throw new TreeDiffError("INVALID_DATE", "Expected date string");
     const d = new Date(v);
     if (Number.isNaN(d.getTime())) throw new TreeDiffError("INVALID_DATE", "Invalid date string");
-    out = setAtPathCopy(out, p, d, owned);
+    out = setAtPathCopy(out, p, d, owned, 0);
   }
   return out;
 }
@@ -156,12 +156,12 @@ function restoreUndefined(out: unknown, paths: RelPath[], owned: WeakSet<object>
   for (const p of paths) {
     const v = getAtPath(root, p);
     if (v !== null) throw new TreeDiffError("INVALID_UNDEFINED_ENCODING", "Expected null for undefined");
-    root = setAtPathCopy(root, p, undefined, owned);
+    root = setAtPathCopy(root, p, undefined, owned, 0);
   }
   return root;
 }
 
-export function restore(encodedRhs: unknown, meta?: Meta | null): unknown {
+export function restore(encodedRhs: unknown, meta?: Meta): unknown {
   if (meta === undefined) return encodedRhs;
   if (meta === null || typeof meta !== "object" || Array.isArray(meta)) {
     throw new TreeDiffError("INVALID_META", "meta must be an object");

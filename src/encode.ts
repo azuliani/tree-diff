@@ -8,9 +8,10 @@ type Encoded = {
   u: RelPath[];
 };
 
-function prefixPaths(prefix: Key, paths: RelPath[]): RelPath[] {
-  if (paths.length === 0) return [];
-  return paths.map((p) => (p.length === 0 ? [prefix] : [prefix, ...p]));
+function appendPrefixed(dest: RelPath[], prefix: Key, paths: RelPath[]): void {
+  for (const p of paths) {
+    dest.push(p.length === 0 ? [prefix] : [prefix, ...p]);
+  }
 }
 
 function encodeInner(value: unknown, stack: WeakSet<object>): Encoded {
@@ -50,8 +51,8 @@ function encodeInner(value: unknown, stack: WeakSet<object>): Encoded {
       for (let i = 0; i < value.length; i++) {
         const child = encodeInner(value[i], stack);
         out[i] = child.value;
-        d.push(...prefixPaths(i, child.d));
-        u.push(...prefixPaths(i, child.u));
+        appendPrefixed(d, i, child.d);
+        appendPrefixed(u, i, child.u);
       }
       return { value: out, d, u };
     } finally {
@@ -69,8 +70,8 @@ function encodeInner(value: unknown, stack: WeakSet<object>): Encoded {
       for (const k of Object.keys(value)) {
         const child = encodeInner(value[k], stack);
         out[k] = child.value;
-        d.push(...prefixPaths(k, child.d));
-        u.push(...prefixPaths(k, child.u));
+        appendPrefixed(d, k, child.d);
+        appendPrefixed(u, k, child.u);
       }
       return { value: out, d, u };
     } finally {

@@ -82,7 +82,7 @@ function applyLeafInArray(arr: unknown[], leaf: Leaf): void {
   }
 
   if (kind === "E") {
-    if (!(0 <= key && key < arr.length)) throw new TreeDiffError("PRECONDITION_FAILED");
+    if (key >= arr.length) throw new TreeDiffError("PRECONDITION_FAILED");
     const rhs = leaf[2];
     const meta = leaf[3] as Meta | undefined;
     arr[key] = restore(rhs, meta);

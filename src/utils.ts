@@ -8,10 +8,6 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
   return proto === Object.prototype || proto === null;
 }
 
-export function isContainer(value: unknown): value is object {
-  return Array.isArray(value) || isPlainObject(value);
-}
-
 export function sameContainerKind(a: unknown, b: unknown): boolean {
   return (
     (Array.isArray(a) && Array.isArray(b)) ||
@@ -25,26 +21,3 @@ export function assertFiniteNumber(value: number): void {
   }
 }
 
-export function assertSupportedScalar(value: unknown): void {
-  switch (typeof value) {
-    case "string":
-    case "boolean":
-    case "undefined":
-      return;
-    case "number":
-      assertFiniteNumber(value);
-      return;
-    case "object":
-      if (value === null) return;
-      if (value instanceof Date) return;
-      throw new TreeDiffError("UNSUPPORTED_TYPE", "Unsupported object type");
-    default:
-      throw new TreeDiffError("UNSUPPORTED_TYPE", `Unsupported type: ${typeof value}`);
-  }
-}
-
-export function assertKey(key: unknown): asserts key is string | number {
-  if (typeof key === "string") return;
-  if (typeof key === "number" && Number.isInteger(key) && key >= 0) return;
-  throw new TreeDiffError("UNSUPPORTED_TYPE", "Invalid key type");
-}

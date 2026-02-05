@@ -1,10 +1,9 @@
-import type { Entry, Key, TreeDelta } from "./types.ts";
-import type { Meta } from "./types.ts";
+import type { Entry, Key, Meta, Node, TreeDelta } from "./types.ts";
 import { TreeDiffError } from "./errors.ts";
 import { encode } from "./encode.ts";
 import { isPlainObject, sameContainerKind } from "./utils.ts";
 
-function isNode(entry: Entry): entry is [path: Key[], entries: Entry[]] {
+function isNode(entry: Entry): entry is Node {
   return Array.isArray(entry[0]);
 }
 
@@ -123,7 +122,7 @@ function diffObject(
         continue;
       }
 
-      if (valuesEqual(l, r)) continue;
+      if (lk === rk && valuesEqual(l, r)) continue;
 
       // If lhs is a container and we aren't recursing, we must still validate it fully.
       if (lk === KIND_ARRAY || lk === KIND_OBJECT) {
@@ -179,7 +178,7 @@ function diffArray(
         continue;
       }
 
-      if (valuesEqual(l, r)) continue;
+      if (lk === rk && valuesEqual(l, r)) continue;
 
       if (lk === KIND_ARRAY || lk === KIND_OBJECT) {
         validateContainerSubtree(l as unknown[] | Record<string, unknown>, lk, lhsStack);
