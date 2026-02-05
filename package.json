@@ -1,6 +1,6 @@
 {
   "name": "@azuliani/tree-diff",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Tree/trie-based JSON-friendly diff and strict patcher.",
   "license": "MIT",
   "repository": {
@@ -33,8 +33,7 @@
     "bench": "node ./bench/run.ts",
     "bench:gc": "node --expose-gc ./bench/run.ts",
     "clean": "rm -rf dist",
-    "prepare": "npm run build",
-    "prepack": "npm run build",
+    "prepare": "node ./scripts/prepare.mjs",
     "prepublishOnly": "npm test && npm run typecheck && npm run test:dist",
     "profile:cpu": "mkdir -p .profiles && node --expose-gc --cpu-prof --cpu-prof-dir .profiles ./bench/profile.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
