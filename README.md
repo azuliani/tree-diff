@@ -53,9 +53,9 @@ Computes a delta that transforms `lhs` into `rhs`.
 - Returns an empty array when there are no changes.
 - Throws on cycles (`CYCLE_DETECTED`) or unsupported values (`UNSUPPORTED_TYPE`).
 
-### `apply(target, delta) -> void`
+### `apply(target, delta) -> object | unknown[]`
 
-Mutates `target` in place.
+Mutates `target` in place and returns it (for chaining convenience).
 
 - Strict: throws if keys/indices don’t exist or preconditions don’t match (`TYPE_MISMATCH`, `PRECONDITION_FAILED`).
 - Uses `meta` to restore `Date` and `undefined` in leaf payloads.

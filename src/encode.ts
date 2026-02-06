@@ -8,6 +8,8 @@ type Encoded = {
   u: RelPath[];
 };
 
+const EMPTY_PATHS: RelPath[] = Object.freeze([]) as unknown as RelPath[];
+
 function appendPrefixed(dest: RelPath[], prefix: Key, paths: RelPath[]): void {
   for (const p of paths) {
     dest.push(p.length === 0 ? [prefix] : [prefix, ...p]);
@@ -16,20 +18,20 @@ function appendPrefixed(dest: RelPath[], prefix: Key, paths: RelPath[]): void {
 
 function encodeInner(value: unknown, stack: WeakSet<object>): Encoded {
   if (value === undefined) {
-    return { value: null, d: [], u: [[]] };
+    return { value: null, d: EMPTY_PATHS, u: [[]] };
   }
 
   if (value === null) {
-    return { value: null, d: [], u: [] };
+    return { value: null, d: EMPTY_PATHS, u: EMPTY_PATHS };
   }
 
   if (typeof value === "string" || typeof value === "boolean") {
-    return { value, d: [], u: [] };
+    return { value, d: EMPTY_PATHS, u: EMPTY_PATHS };
   }
 
   if (typeof value === "number") {
     assertFiniteNumber(value);
-    return { value, d: [], u: [] };
+    return { value, d: EMPTY_PATHS, u: EMPTY_PATHS };
   }
 
   const t = typeof value;
@@ -38,7 +40,7 @@ function encodeInner(value: unknown, stack: WeakSet<object>): Encoded {
   }
 
   if (value instanceof Date) {
-    return { value: value.toISOString(), d: [[]], u: [] };
+    return { value: value.toISOString(), d: [[]], u: EMPTY_PATHS };
   }
 
   if (Array.isArray(value)) {

@@ -345,18 +345,14 @@ During traversal:
 Signature (conceptual):
 
 ```ts
-function apply(target: object | unknown[], delta: TreeDelta | undefined): void;
+function apply(target: object | unknown[], delta: TreeDelta | undefined): object | unknown[];
 ```
 
-`apply()` mutates `target` in place.
+`apply()` mutates `target` in place and returns it.
 
 ### 7.1 Object key existence
 
-Object key existence checks MUST use:
-
-```ts
-Object.prototype.hasOwnProperty.call(obj, key)
-```
+Object key existence checks MUST use own-property checks (e.g. `Object.hasOwn(obj, key)`).
 
 ### 7.2 Node traversal (no creation)
 

@@ -1,5 +1,4 @@
 import { spawnSync } from "node:child_process";
-import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";

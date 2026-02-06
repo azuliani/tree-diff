@@ -18,7 +18,6 @@ export type Fixture = {
 
 function clone<T>(value: T): T {
   // Node 23+ has structuredClone and it preserves Date + undefined.
-  // eslint-disable-next-line no-undef
   return structuredClone(value);
 }
 

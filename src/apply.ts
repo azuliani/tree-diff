@@ -1,15 +1,7 @@
-import type { Entry, Key, Leaf, Meta, Node, TreeDelta } from "./types.ts";
+import type { Entry, Key, Leaf, Meta, TreeDelta } from "./types.ts";
 import { TreeDiffError } from "./errors.ts";
-import { isPlainObject } from "./utils.ts";
+import { isLeaf, isNode, isPlainObject } from "./utils.ts";
 import { restore } from "./restore.ts";
-
-function isNode(entry: Entry): entry is Node {
-  return Array.isArray(entry[0]);
-}
-
-function isLeaf(entry: Entry): entry is Leaf {
-  return !Array.isArray(entry[0]);
-}
 
 function traverseNode(container: unknown, path: Key[]): unknown {
   if (path.length === 0) throw new TreeDiffError("TYPE_MISMATCH", "Node path must be non-empty");
@@ -29,7 +21,7 @@ function traverseNode(container: unknown, path: Key[]): unknown {
     }
     if (isPlainObject(cur)) {
       if (typeof seg !== "string") throw new TreeDiffError("TYPE_MISMATCH", "Expected object key");
-      if (!Object.prototype.hasOwnProperty.call(cur, seg)) {
+      if (!Object.hasOwn(cur, seg)) {
         throw new TreeDiffError("TYPE_MISMATCH", "Missing key");
       }
       const next = cur[seg];
@@ -48,7 +40,7 @@ function applyLeafInObject(obj: Record<string, unknown>, leaf: Leaf): void {
   const [key, kind] = leaf;
   if (typeof key !== "string") throw new TreeDiffError("TYPE_MISMATCH", "Object key must be string");
 
-  const has = Object.prototype.hasOwnProperty.call(obj, key);
+  const has = Object.hasOwn(obj, key);
 
   if (kind === "N") {
     if (has) throw new TreeDiffError("PRECONDITION_FAILED");
@@ -163,7 +155,8 @@ function applyEntriesArray(arr: unknown[], entries: Entry[]): void {
   }
 }
 
-export function apply(target: object | unknown[], delta: TreeDelta | undefined): void {
-  if (!delta || delta.length === 0) return;
+export function apply(target: object | unknown[], delta: TreeDelta | undefined): object | unknown[] {
+  if (!delta || delta.length === 0) return target;
   applyEntries(target, delta);
+  return target;
 }

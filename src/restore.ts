@@ -89,7 +89,7 @@ function setAtPathCopy(
 
   if (isPlainObject(root)) {
     if (typeof head !== "string") throw new TreeDiffError("INVALID_META", "Expected object key");
-    if (!Object.prototype.hasOwnProperty.call(root, head)) {
+    if (!Object.hasOwn(root, head)) {
       throw new TreeDiffError("INVALID_META", "Missing object key");
     }
 
@@ -128,7 +128,7 @@ function getAtPath(root: unknown, path: RelPath): unknown {
     }
     if (isPlainObject(cur)) {
       if (typeof seg !== "string") throw new TreeDiffError("INVALID_META", "Expected object key");
-      if (!Object.prototype.hasOwnProperty.call(cur, seg)) {
+      if (!Object.hasOwn(cur, seg)) {
         throw new TreeDiffError("INVALID_META", "Missing object key");
       }
       cur = cur[seg];
@@ -167,12 +167,12 @@ export function restore(encodedRhs: unknown, meta?: Meta): unknown {
     throw new TreeDiffError("INVALID_META", "meta must be an object");
   }
 
-  assertMetaValid(meta as Meta);
+  assertMetaValid(meta);
 
   const owned = new WeakSet<object>();
   let out: unknown = encodedRhs;
-  const d = (meta as Meta).d;
-  const u = (meta as Meta).u;
+  const d = meta.d;
+  const u = meta.u;
   if (d && d.length > 0) out = restoreDates(out, d, owned);
   if (u && u.length > 0) out = restoreUndefined(out, u, owned);
   return out;

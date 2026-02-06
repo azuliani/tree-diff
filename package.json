@@ -1,7 +1,15 @@
 {
   "name": "@azuliani/tree-diff",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Tree/trie-based JSON-friendly diff and strict patcher.",
+  "keywords": [
+    "diff",
+    "patch",
+    "delta",
+    "trie",
+    "tree",
+    "json"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -38,12 +46,16 @@
     "profile:cpu": "mkdir -p .profiles && node --expose-gc --cpu-prof --cpu-prof-dir .profiles ./bench/profile.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test ./test/tree-diff.test.ts",
+    "lint": "eslint .",
     "test:dist": "npm run build && node --test ./test/dist-exports.test.cjs"
   },
   "devDependencies": {
     "@azuliani/deep-diff": "^1.0.2",
+    "@eslint/js": "^9.39.2",
     "@types/node": "^22.13.4",
-    "typescript": "^5.7.3"
+    "eslint": "^9.39.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.54.0"
   },
   "engines": {
     "node": ">=23.6.0"

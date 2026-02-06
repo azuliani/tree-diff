@@ -1,11 +1,7 @@
-import type { Entry, Key, Meta, Node, TreeDelta } from "./types.ts";
+import type { Entry, Key, Meta, TreeDelta } from "./types.ts";
 import { TreeDiffError } from "./errors.ts";
 import { encode } from "./encode.ts";
-import { isPlainObject, sameContainerKind } from "./utils.ts";
-
-function isNode(entry: Entry): entry is Node {
-  return Array.isArray(entry[0]);
-}
+import { isNode, isPlainObject, sameContainerKind } from "./utils.ts";
 
 function wrapNode(head: Key, entries: Entry[]): Entry {
   if (entries.length === 1) {
@@ -99,7 +95,7 @@ function diffObject(
       const l = lhs[k];
       const lk = kindOf(l);
 
-      if (!Object.prototype.hasOwnProperty.call(rhs, k)) {
+      if (!Object.hasOwn(rhs, k)) {
         if (lk === KIND_ARRAY || lk === KIND_OBJECT) {
           validateContainerSubtree(l as unknown[] | Record<string, unknown>, lk, lhsStack);
         }
@@ -133,7 +129,7 @@ function diffObject(
     }
 
     for (const k of Object.keys(rhs)) {
-      if (Object.prototype.hasOwnProperty.call(lhs, k)) continue;
+      if (Object.hasOwn(lhs, k)) continue;
       const encoded = encode(rhs[k]);
       out.push(leaf(k, "N", encoded.value, encoded.meta));
     }

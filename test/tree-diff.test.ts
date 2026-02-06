@@ -335,3 +335,102 @@ test("direct array root diff/apply", () => {
   apply(target, delta);
   assert.deepEqual(target, [1, 3]);
 });
+
+// --- New coverage tests ---
+
+test("sparse arrays: diff detects hole as undefined", () => {
+  const lhs = [1, 2, 3];
+  // eslint-disable-next-line no-sparse-arrays
+  const rhs = [1, , 3];
+  const delta = diff(lhs, rhs);
+  // Index 1 changed from 2 to undefined → E leaf with u meta
+  assert.deepEqual(delta, [[1, "E", null, { u: [[]] }]]);
+
+  const target = [1, 2, 3];
+  apply(target, delta);
+  assert.equal(target[1], undefined);
+});
+
+test("array N+D rejection: hand-crafted delta with both N and D", () => {
+  assert.throws(
+    () => apply([1, 2], [[1, "D"], [2, "N", 99]] as any),
+    (e) => e instanceof TreeDiffError && e.code === "PRECONDITION_FAILED"
+  );
+});
+
+test("nested Date/undefined in N leaves", () => {
+  const lhs: any = { items: [] };
+  const rhs: any = { items: [{ when: new Date("2026-03-01T00:00:00.000Z"), note: undefined }] };
+  const delta = diff(lhs, rhs);
+  const target: any = { items: [] };
+  apply(target, delta);
+  assert.equal(target.items[0].when instanceof Date, true);
+  assert.equal(target.items[0].when.toISOString(), "2026-03-01T00:00:00.000Z");
+  assert.equal(target.items[0].note, undefined);
+  assert.equal(Object.prototype.hasOwnProperty.call(target.items[0], "note"), true);
+});
+
+test("empty meta.d/meta.u are harmless no-ops", () => {
+  const target: any = { a: "hello" };
+  // meta with empty d and u should not break anything
+  apply(target, [["a", "E", "world", { d: [], u: [] }]]);
+  assert.equal(target.a, "world");
+});
+
+test("container type mismatch: object-keyed delta on array", () => {
+  // Applying a string-keyed leaf to an array should fail
+  assert.throws(
+    () => apply([], [["foo", "N", 1]] as any),
+    (e) => e instanceof TreeDiffError && e.code === "TYPE_MISMATCH"
+  );
+});
+
+test("container type mismatch: numeric-keyed leaf on object", () => {
+  // Applying a numeric-keyed leaf to an object should fail
+  assert.throws(
+    () => apply({ a: 1 }, [[0, "N", 1]] as any),
+    (e) => e instanceof TreeDiffError && e.code === "TYPE_MISMATCH"
+  );
+});
+
+test("TYPE_MISMATCH subtypes", () => {
+  // Wrong key type in node traversal
+  assert.throws(
+    () => apply([{}], [[["foo"], [["x", "N", 1]]]] as any),
+    (e) => e instanceof TreeDiffError && e.code === "TYPE_MISMATCH"
+  );
+
+  // Index out of bounds in node traversal
+  assert.throws(
+    () => apply([[]], [[[99], [["x", "N", 1]]]] as any),
+    (e) => e instanceof TreeDiffError && e.code === "TYPE_MISMATCH"
+  );
+
+  // Non-container traversal
+  assert.throws(
+    () => apply([42], [[[0], [["x", "N", 1]]]] as any),
+    (e) => e instanceof TreeDiffError && e.code === "TYPE_MISMATCH"
+  );
+
+  // Empty node path
+  assert.throws(
+    () => apply({}, [[[], [["x", "N", 1]]]] as any),
+    (e) => e instanceof TreeDiffError && e.code === "TYPE_MISMATCH"
+  );
+});
+
+test("apply() returns target reference", () => {
+  const target = { a: 1 };
+  const delta = diff({ a: 1 }, { a: 2 });
+  const result = apply(target, delta);
+  assert.equal(result, target);
+  assert.equal((result as any).a, 2);
+
+  // Also for no-op delta
+  const target2 = { b: 1 };
+  const result2 = apply(target2, undefined);
+  assert.equal(result2, target2);
+
+  const result3 = apply(target2, []);
+  assert.equal(result3, target2);
+});
